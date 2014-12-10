@@ -1,0 +1,184 @@
+---
+title: "Multiple Linear Regression In R"
+author: "Peter von Rohr"
+date: "4 Nov 2014"
+output:
+  html_document:
+    keep_md: no
+    theme: united
+    mathjax: "http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+published: no
+references:
+- URL: http://stat.ethz.ch/education/semesters/ss2014/CompStat
+  author:
+  - family: Bühlmann
+    given: Peter
+  - family: Mächler
+    given: Martin
+  id: BM2014
+  issued:
+    year: 2014
+  title: Computational Statistics
+status: process
+layout: post
+---
+
+## Disclaimer
+This post is a summary of one chapter of course notes on Computational Statistics taught at ETH Zurich by [@BM2014]. For all those who are interested in a mathematically rigorous presentation of some topics of computational statistics are invited to have a look at the course notes. The link to those course notes is included in the References section of this post.
+
+I can also recommend a completely informal introduction to the topic of least squares by Rafael Irizarry. In his [video](https://www.youtube.com/watch?v=3KFwJd5-JD8) he shows how to teach least squares to a fifth grader.
+
+
+## A First Example Analysis In R
+We start with a practical example of a multiple linear regression analysis in R. For all those who are interested in a more formal introduction are advice to skip to the next section.
+
+For our first analysis, we are using the Chatterjee–Price Attitude data-set. This data-set is part of the R-system and is described in the help file available via
+
+```{r, eval=FALSE}
+?attitude
+```
+
+The data objects are survey results of clerical employees of a company. The data-set consists of `r nrow(attitude)` observations on `r ncol(attitude)` variables. The data is organsied such that variables are stored in columns and observations are stored in rows.  
+
+Let us assume that we focus on one particular variable, namely in the variable called `rating`. We are interested in finding relationships that are found between `rating` and any of the other variables.
+
+### Data inspection
+Before getting into any model fitting, it is always a good idea to get an overview of the data by a pairs plot. The pairs plot is composed of a matrix of scatter-plots for all combinations of variables in the data-set.
+
+```{r}
+require(stats); require(graphics)
+pairs(attitude, main = "attitude data")
+```
+
+Simple summary statistics are obtained by 
+
+```{r}
+summary(attitude)
+```
+
+```{r, echo=FALSE}
+### # this part prepares the name of the response variable
+### #  and of the predictor variables, based on the names 
+### #  of the dataframe. The idea is to define the response 
+### #  variable as fixed and to then collect all other variables 
+### #  into the predictor variables
+vAllVar <- names(attitude)
+nRespVarIdx <- 1
+sRespVar <- vAllVar[nRespVarIdx]
+vPredVar <- vAllVar[-nRespVarIdx]
+sPredVar <- paste(paste(vPredVar[1:(length(vPredVar)-1)], collapse = ", "), vPredVar[length(vPredVar)], sep = " and ")
+```
+
+### A first linear model
+In a first step, we are interested in how the `r length(vPredVar)` variables `r sPredVar` are related to the observed overall rating.
+
+```{r}
+fm1 <- lm(rating ~ ., data = attitude)
+```
+
+The call to function `lm()` fits the multiple linear regression model using variable `rating` as response and all other variables as predictors. Since we are assigning the result to a variable, noting is returned. But the resulting linear model object has a summary method which shows us the most important results.
+
+```{r}
+summary(fm1)
+```
+
+The above summary of the linear model object contains the following details: 
+
+* empirical quantiles of the residuals
+* estimates of the linear coefficients of each predictor variable
+* standard errors of each estimate
+* the t-Test statistic for the null-hypotheses of each coefficient being $0$
+* the corresponding two-sided p-values to the above mentioned null-hypotheses
+* some abbreviations of the strength of significance of the above mentioned test
+
+### Diagnostics plots
+Besides just looking at the numbers given by the modeling output it is always a good idea to also look at some diagnostics plots. The residuals $r_i$ corresponding to the difference of the observed values $y_i$ minus the fitted values $\hat{y}_i$ are useful approximations of the unobservable error terms. The plot below shows four diagrams which are helpful in checking the appropriatness of the chosen linear model.
+
+```{r}
+opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
+plot(fm1, las = 1, )
+```
+
+```{r, echo=FALSE}
+par(opar)
+```
+
+The top left diagram shows a plot of the residuals versus the fitted values. It is also known as the `Tukey-Anscombe` plot. Ideally there should be no relationship between the two quantities and the red line should ideally be horizontal. For our example data-set we can see that there is no obvious pattern between residuals and fitted values. The top right diagram is a so-called `QQ-plot` which draws empirically observed quantiles of the residuals versus theoretically expected quantiles, assuming a normal distribution for the error term. In an ideal situation these are all on a line with slope $= 1$. The diagrams in the bottom row are the `scale-location` plot testing for equal variance of the residuals and the `residuals vs leverage` plot.
+
+### A refined model
+When looking at the summary result of the first model fit `fm1`, we can see that based on the t-Test statistic and its accompanying p-value, the variable `complaints` stands out from the other variables. Hence we can refine our model and check a smaller model which uses only `complaints` as a predictor for the response.
+
+```{r}
+summary(fm2 <- lm(rating ~ complaints, data = attitude))
+```
+
+## A More Formal Introduction
+Multiple linear regression is defined by the following quote from @BM2014. 
+
+> Given a single response variable: up to some random errors it is a linear function
+> of several predictors (or covariables). The linear function involves unknown 
+> parameters. The goal is to estimate these
+> parameters, to study their relevance and to estimate the error variance.  
+
+What the above quote means is that for a set of objects or a set of individuals, we have observed or measured some quantities which are termed `response variable` or `y-values` or `dependent variable`. As an example in a clinical study, we have measured blood pressure or cholesterol levels for a given set of patients. The response variables can only be observed or measured up to some random and non-systematic errors. 
+
+In addition to the response variable, we have for the same set of objects or individuals, some more characteristics that describe or classify the given objects or individuals. For our patients in the above example that might be height and weight or some diatary quantities. These quantities are termed `predictors` or `covariables` or `independent variables` and are assumed to be known exactly without any errors.
+
+The goal of multiple linear regression is to relate the predictors to a response variable using the mathematical tool of linear functions. In what follows is a more mathematical description of what was described so far.
+
+### Notation
+* $\mathbf{y} = \{y_i;\ i=1,...,n \}$ : vector of $n$ observations
+* $\mathbf{x}^{(j)} = \{x_{i,j};\ i=1, ..., n\}$: vector of $j^{th}$ predictor (covariable) ($j = 1, ..., p$)
+* $\mathbf{x}_i = \{x_{i,j};\  j = 1, ..., p\}$: vector of the $i^{th}$ observation ($i = 1, ..., n$)
+* $\mathbf{\beta} = \{\beta_j;\ j = 1, ..., p\}$: vector of unknown parameters
+* $\mathbf{\epsilon} = \{\epsilon_i;\ i = 1, ..., n \}$: vector of unknown random errors
+* $n$ is the sample size, $p$ is the number of parameters
+
+### Model in vector form
+$$y_i = \mathbf{x}_i^T \mathbf{\beta} + \epsilon_i \text{ with } (i = 1, ..., n)$$
+
+Usually it is assumed that $\epsilon_1, ..., \epsilon_n$ are idependent and identically distributed (iid) with $\mathbb{E}[\epsilon_i] = 0$ and $Var(\epsilon_i) = \sigma^2$
+
+### Model in matrix form
+$$\mathbf{y} = \mathbf{X}\mathbf{\beta} + \mathbf{\epsilon}$$
+
+where $\mathbf{X}$ is a matrix with $n$ rows $\mathbf{x}_i^T$ and $p$ columns $\mathbf{x}^{(j)}$. It is assumed that $n>p$ and that matrix $\mathbf{X}$ has full rank $p$, i.e. all $p$ vectors $\mathbf{x}^{(1)}, ..., \mathbf{x}^{(p)}$ are linearly independent. 
+
+### Goals for linear regression analysis
+* __Good fit__. Fitting a (hyper-) plane over the predictor variables to explain response variables such that errors are "small"
+* __Good parameter estimates__. Parameter estimates should allow for a description of the change in the response variables when predictor variables change
+* __Good predictions__. It is useful to be able to predict new responses as a function of predictor variables
+* __Uncertainties and significance for above three__. Confidence intervalls and statistical tests are useful tools for this goal
+* __Development of a good model__. Model refinement through some iterative process
+
+
+## Parameter Estimation - Least Squares
+Given the linear model $\mathbf{y} = \mathbf{X}\mathbf{\beta} + \mathbf{\epsilon}$, we are looking for good estimates $\hat{\mathbf{\beta}}$  for the unknown parameter vector $\mathbf{\beta}$. One possibility of finding such estimates $\hat{\mathbf{\beta}}$ is through the method of __least squares__ which aims at finding  $\hat{\mathbf{\beta}}$ such that the errors are as small as possible. 
+
+More formally, the least squares estimator is defined as 
+
+$$\hat{\mathbf{\beta}} = \text{argmin}_{\beta}\lVert\mathbf{y} - \mathbf{X}\mathbf{\beta}\rVert^2$$
+
+where $\lVert.\rVert$ is defined as the Euclidean norm on the $n$ dimensional space $\mathbf{R}^n$. The $\text{argmin}_\beta$ operator finds that representative of $\beta$ that minimizes the expression $\lVert\mathbf{y} - \mathbf{X}\mathbf{\beta}\rVert^2$. Assuming $\mathbf{X}$ has full column rank $p$, the minimum of the above norm can be computed explicitly. Taking the derivative of the norm with respect to $\mathbf{\beta}$ ($p$ dimensional gradient vector) inserting $\hat{\mathbf{\beta}}$ for $\mathbf{\beta}$ and setting the derivative to zero yields 
+
+$$ (-2)\mathbf{X}^T(\mathbf{y} - \mathbf{X}\hat{\mathbf{\beta}}) = \mathbf{0}$$
+
+This can be transformed into the following __normal equation__ 
+
+$$\mathbf{X}^T\mathbf{X}\hat{\mathbf{\beta}} = \mathbf{X}^T\mathbf{y}$$
+
+Although, the normal equation can explicitly be solved for the unknown $\hat{\mathbf{\beta}}$ resulting in 
+
+$$\hat{\mathbf{\beta}} =  \left(\mathbf{X}^T\mathbf{X}\right)^{-1}\mathbf{X}^T\mathbf{y} \text{ ,}$$ 
+
+this formula is only useful for theoretical purposes. For numerical computations, it is much more stable to use the __QR__ decomposition instead of inverting $\left(\mathbf{X}^T\mathbf{X}\right)$. 
+
+Using the residuals $r_i = y_i - \mathbf{x}_i^T\hat{\mathbf{\beta}}$ as estimates for the errors $\epsilon_i$ a plausible estimator for $\sigma^2$ is 
+
+$$\hat{\sigma}^2 = \frac{1}{n-p}\sum_{i=1}^n r_i^2$$
+
+The unusual factor $\frac{1}{n-p}$ leads to $\mathbf{E}\left[\hat{\sigma}^2\right] = \sigma^2$ which means the estimator is unbiased.
+
+
+# References
+

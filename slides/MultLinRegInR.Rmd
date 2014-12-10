@@ -1,0 +1,126 @@
+---
+title: "Multiple Linear Regression in R"
+author: "Peter von Rohr"
+date: "9 Dec 2014"
+output: slidy_presentation
+---
+
+## Example Data
+
+* Chatterjee–Price Attitude dataset available in `R`
+* Read about the dataset in the helpfile `?attitude`
+* Data consists of 30 observations on seven variables from a survey
+* Graphical inspection of the data can be done using a `pairs plot`
+
+---
+
+### Graphical inspection of attitude dataset 
+
+```{r,echo=FALSE}
+require(stats); require(graphics)
+pairs(attitude, main = "attitude data")
+```
+
+---
+
+## Goals
+
+Let us assume that
+
+* the variable called `rating` which contains the overall rating of a given survey is of special interest in a way that we want to find the relation of this variable to all other variables
+* as a consequence of that special interest, the variable rating is called the `response`
+* all other variables are the so-called `predictor` variables
+* the relation between predictors and response is expressed in terms of a linear function
+
+--- 
+
+## A First Linear Model
+
+- Our first model proposes that all predictor variables have some relationship with the response. 
+- In R we use the function `lm()` using the following syntax
+
+```{r}
+fm1 <- lm(rating ~ ., data = attitude)
+```
+
+- The returned result is an object of class `lm` which has different methods that 
+can be applied to, such as 
+  - `summary()` to get a summary of the model results
+  - `coef()` which is an accessor for the coefficients
+  - `residuals()` which shows the residuals
+  - ...
+- see `?lm` for a complete list
+
+--- 
+
+## Results From First Model
+
+- The `summary()` method shows all important characteristics of a linear model object
+
+```{r, eval=FALSE}
+summary(fm1)
+```
+
+- Due to space restrictions on one slide, the summary output is broken up into separate parts 
+- The first part returns the call to the `lm` function which produced the summary shown
+
+```{r, echo=FALSE}
+source("outputLmSum.R")
+sumFm1 <- summary(fm1)
+writeLmCallSummary(sumFm1)
+```
+
+---
+
+### Part two summarizes the residuals. This summary contains 
+- minimum (`Min`)
+- median (`Median`)
+- maximum (`Max`)
+- first and third quantiles (`1Q`, `3Q`)
+
+```{r, echo=FALSE}
+source("outputLmSum.R")
+writeLmResidualsSummary(sumFm1)
+```
+
+---
+
+### Part three presents 
+- coefficient estimates, 
+- standard errors and 
+- t-test statistics and p-values for null-hypotheses of each coefficient being zero
+
+```{r, echo=FALSE}
+source("outputLmSum.R")
+writeLmCoefSummary(sumFm1)
+```
+
+---
+
+### Last part lists
+
+- Residual standard error, 
+- multiple R-squared and 
+- F-test statistic 
+
+```{r, echo=FALSE}
+source("outputLmSum.R")
+writeLmRSESummary(sumFm1)
+writeLmRSQSummary(sumFm1)
+writeLmFStatSummary(sumFm1)
+```
+
+---
+
+## Diagnostics Plots
+
+```{r}
+opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0));plot(fm1);par(opar)
+```
+
+---
+
+- `Tukey-Anscomb` plot (top left) shows residuals vs. fitted values, ideally the points do not show any "pattern"
+- `Normal Q-Q` plot (top right) compares empirical quantiles with expected quantiles under the normal distribution. Assumption of Gaussian residuals is met when all points are on the dotted line shown in the plot
+- `Scale Location` plot (bottom left) is an indicator for dependencies between variability of observations and parameter location
+- `Leverage` plot (bottom right)
